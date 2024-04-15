@@ -1,0 +1,36 @@
+brand = "mercury"
+model = "236"
+response_template = "read_energy"
+
+[[converters]]
+ip = "10.0.0.101"
+port = 19
+
+[[converters.meters]]
+address = 5
+access_level = 2
+password = "222222"
+payload = [0x05, 0x00, 0x01, 0x00]
+
+[[converters.meters]]
+address = 19
+access_level = 2
+password = "222222"
+payload = [0x05, 0x00, 0x01, 0x00]
+
+
+[[converters]]
+ip = "10.0.0.101"
+port = 19
+
+[[converters.meters]]
+address = 5
+access_level = 2
+password = "222222"
+payload = [0x05, 0x00, 0x01, 0x00]
+
+[[converters.meters]]
+address = 5
+access_level = 2
+password = "222222"
+payload = [0x05, 0x00, 0x01, 0x00]

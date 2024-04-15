@@ -1,0 +1,9 @@
+# JetBrains
+.idea
+
+# Config
+/*.toml
+
+# Poetry
+dist
+!pyproject.toml
