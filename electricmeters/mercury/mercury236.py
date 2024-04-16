@@ -35,7 +35,7 @@ class Mercury236:
 
     def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111',
                  debug: bool = False):
-        self._debug = debug
+        self.debug = debug
         self._is_socket_open = False
 
         self.address = address % 1000
@@ -67,14 +67,14 @@ class Mercury236:
 
     def request(self, *args):
         caller_name = inspect.stack()[1][3]
-        if self._debug:
+        if self.debug:
             print(f'Request caller: {caller_name}')
-        self._socket.sendall(self._pack_message(self.address, *args, debug=self._debug))
+        self._socket.sendall(self._pack_message(self.address, *args, debug=self.debug))
 
         response = self._read_socket()
 
         if len(response) > 1:
-            address, data = self._unpack_message(response, debug=self._debug)
+            address, data = self._unpack_message(response, debug=self.debug)
             if address == self.address:
                 return data
 
