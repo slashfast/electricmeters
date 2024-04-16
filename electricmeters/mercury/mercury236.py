@@ -71,6 +71,8 @@ class Mercury236:
         if len(response) > 1:
             address, data = self._unpack_message(response)
             if address == self.address:
+                caller_name = inspect.stack()[1][3]
+                print(f'Request caller: {caller_name}')
                 return data
 
         raise ValueError(f"Error while read data from socket")
@@ -151,7 +153,7 @@ class Mercury236:
         print(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
         address = int.from_bytes(message[:1], 'big')
         data = list(message[1:])
-        print(f'Before unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
+        print(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
         return address, data
 
     @staticmethod
