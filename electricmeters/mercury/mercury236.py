@@ -128,7 +128,7 @@ class Mercury236:
         elif array == 6:
             raise NotImplementedError()
         elif array in [0, 1, 2, 4, 5, 9, 10, 11, 12, 13]:
-            pass
+            array = (array << 4) | 0
         else:
             raise ValueError('Invalid array number')
 
@@ -155,6 +155,7 @@ class Mercury236:
     @staticmethod
     def _pack_message(*args, crc=True, debug=False):
         caller_name = inspect.stack()[1][3]
+        print(args)
         message = bytes(args)
         if debug:
             print(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
