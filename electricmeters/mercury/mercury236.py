@@ -94,19 +94,19 @@ class Mercury236:
 
         return buffer
 
-    def read(self, *args, raw=False):
+    def read(self, *args, raw=False, order: list[int] = None):
         response = self.request(*args)
 
         if raw:
             return response
         else:
-            return self._decode_response(response)
+            return self._decode_response(response, order)
 
     def read_unsafe(self, *args):
         data = self.read(*args)
         return {i: value for i, value in enumerate(data)}
 
-    def read_energy(self, request_code: int = 0x05, array: int = 0x00, month: int = 1, tariff: int = 0x00):
+    def read_energy(self, request_code: int = 0x05, array: int = 0x00, month: int = 0x01, tariff: int = 0x00):
         if request_code not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13]:
             raise ValueError('Invalid request code')
 
@@ -125,7 +125,7 @@ class Mercury236:
         else:
             raise ValueError('Invalid array number')
 
-        data = self.read(request_code, array, tariff)
+        data = self.read(request_code, array, tariff, order=[1, 0, 3, 2])
 
         if request_code == 5:
             return {
@@ -168,8 +168,11 @@ class Mercury236:
         return address, data
 
     @staticmethod
-    def _decode_response(data):
+    def _decode_response(data, order: list[int] = None):
         for chunk in batched(data[:-2], 4):
+            if isinstance(order, list) and len(order) == 4:
+                chunk = [chunk[order[0]], chunk[order[1]], chunk[order[2]], chunk[order[3]]]
+
             chunk = [value for value in chunk if value > 0]
 
             if len(chunk) == 0 or chunk == [255, 255, 255, 255]:
