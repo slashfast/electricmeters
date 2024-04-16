@@ -25,6 +25,7 @@ import socket
 from argparse import Namespace
 from functools import reduce
 from itertools import batched
+from math import log10
 
 from electricmeters.crc16 import crc16
 
@@ -32,11 +33,17 @@ logger = logging.getLogger(__name__)
 
 
 class Mercury236:
-
     def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111',
+                 metric_prefix: int = 1,
                  debug: bool = False):
         self.debug = debug
         self._is_socket_open = False
+
+        self.metric_prefix = 1
+        if metric_prefix == 10 ** log10(metric_prefix):
+            self.metric_prefix = metric_prefix
+        elif self.debug:
+            print(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
 
         self.address = address % 1000
         if self.address == 0:
@@ -102,9 +109,9 @@ class Mercury236:
         else:
             return self._decode_response(response, order)
 
-        return {i: value for i, value in enumerate(data)}
     def read_unsafe(self, *args, order: list[int] = None):
         data = self.read(*args, order=order)
+        return {i: value / self.metric_prefix if self.metric_prefix > 1 else value for i, value in enumerate(data)}
 
     def read_energy(self, request_code: int = 0x05, array: int = 0x00, month: int = 0x01, tariff: int = 0x00):
         if request_code not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13]:
@@ -129,10 +136,10 @@ class Mercury236:
 
         if request_code == 5:
             return {
-                'active+': next(data),
-                'active-': next(data),
-                'reactive+': next(data),
-                'reactive-': next(data)
+                'active+': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data),
+                'active-': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data),
+                'reactive+': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data),
+                'reactive-': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data)
             }
         else:
             raise NotImplementedError()
@@ -188,6 +195,8 @@ class Mercury236:
         if response_template == '':
             response_template = None
         debug = dict.get(config, 'debug', False)
+        metric_prefix = dict.get(config, 'metric_prefix', 1)
+
         result = []
         for converter in converters:
             ip = converter['ip']
@@ -216,11 +225,9 @@ class Mercury236:
                 }
 
                 try:
-                    with Mercury236(ip, port, address, access_level, password, debug) as em:
+                    with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
                         if response_template == 'read_energy' and len(payload) == 4:
                             em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
-                        elif response_template == '':
-                            em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload)
                         elif response_template is None:
                             em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
                 except Exception as e:
