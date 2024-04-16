@@ -33,7 +33,9 @@ logger = logging.getLogger(__name__)
 
 class Mercury236:
 
-    def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111'):
+    def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111',
+                 debug: bool = False):
+        self._debug = debug
         self._is_socket_open = False
 
         self.address = address % 1000
@@ -65,13 +67,14 @@ class Mercury236:
 
     def request(self, *args):
         caller_name = inspect.stack()[1][3]
-        print(f'Request caller: {caller_name}')
-        self._socket.sendall(self._pack_message(self.address, *args))
+        if self._debug:
+            print(f'Request caller: {caller_name}')
+        self._socket.sendall(self._pack_message(self.address, *args, debug=self._debug))
 
         response = self._read_socket()
 
         if len(response) > 1:
-            address, data = self._unpack_message(response)
+            address, data = self._unpack_message(response, debug=self._debug)
             if address == self.address:
                 return data
 
@@ -143,21 +146,25 @@ class Mercury236:
         return self
 
     @staticmethod
-    def _pack_message(*args, crc=True):
+    def _pack_message(*args, crc=True, debug=False):
         caller_name = inspect.stack()[1][3]
         message = bytes(args)
-        print(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
+        if debug:
+            print(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
         result = message + crc16(message) if crc else message
-        print(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
+        if debug:
+            print(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
         return result
 
     @staticmethod
-    def _unpack_message(message: bytes):
+    def _unpack_message(message: bytes, debug: bool = False):
         caller_name = inspect.stack()[1][3]
-        print(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
+        if debug:
+            print(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
         address = int.from_bytes(message[:1], 'big')
         data = list(message[1:])
-        print(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
+        if debug:
+            print(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
         return address, data
 
     @staticmethod
@@ -176,6 +183,13 @@ class Mercury236:
         converters = config['converters']
         response_template = config['response_template']
         result = []
+
+        debug = False
+
+        try:
+            debug = config['debug']
+        except KeyError:
+            pass
 
         for converter in converters:
             ip = converter['ip']
@@ -203,7 +217,7 @@ class Mercury236:
                 }
 
                 try:
-                    with Mercury236(ip, port, address, access_level, password) as em:
+                    with Mercury236(ip, port, address, access_level, password, debug) as em:
                         if response_template == 'read_energy' and len(payload) == 4:
                             em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
                         elif response_template == '':
