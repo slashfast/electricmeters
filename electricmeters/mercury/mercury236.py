@@ -18,7 +18,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+import inspect
 import json
 import logging
 import socket
@@ -147,8 +147,11 @@ class Mercury236:
 
     @staticmethod
     def _unpack_message(message: bytes):
+        caller_name = inspect.stack()[1][3]
+        print(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
         address = int.from_bytes(message[:1], 'big')
         data = list(message[1:])
+        print(f'Before unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
         return address, data
 
     @staticmethod
