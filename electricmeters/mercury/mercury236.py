@@ -184,16 +184,11 @@ class Mercury236:
     def compose(config: dict):
         print(config)
         converters = config['converters']
-        response_template = config['response_template']
+        response_template = dict.get(config, 'response_template', None)
+        if response_template == '':
+            response_template = None
+        debug = dict.get(config, 'debug', False)
         result = []
-
-        debug = False
-
-        try:
-            debug = config['debug']
-        except KeyError:
-            pass
-
         for converter in converters:
             ip = converter['ip']
             port = converter['port']
@@ -225,6 +220,7 @@ class Mercury236:
                             em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
                         elif response_template == '':
                             em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload)
+                        elif response_template is None:
                 except Exception as e:
                     em_result[f'error'] = f'{e}'
                     Mercury236.log_error(address, ip, port, e)
