@@ -102,9 +102,9 @@ class Mercury236:
         else:
             return self._decode_response(response, order)
 
-    def read_unsafe(self, *args):
-        data = self.read(*args)
         return {i: value for i, value in enumerate(data)}
+    def read_unsafe(self, *args, order: list[int] = None):
+        data = self.read(*args, order=order)
 
     def read_energy(self, request_code: int = 0x05, array: int = 0x00, month: int = 0x01, tariff: int = 0x00):
         if request_code not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13]:
@@ -207,6 +207,7 @@ class Mercury236:
                 password = meter['password']
                 payload = meter['payload']
                 hex_payload = hex(int.from_bytes(payload))
+                bytes_order = dict.get(meter, 'order', None)
 
                 em_result = {
                     'address': address,
@@ -221,6 +222,7 @@ class Mercury236:
                         elif response_template == '':
                             em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload)
                         elif response_template is None:
+                            em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
                 except Exception as e:
                     em_result[f'error'] = f'{e}'
                     Mercury236.log_error(address, ip, port, e)
