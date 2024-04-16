@@ -69,10 +69,10 @@ class Mercury236:
         response = self._read_socket()
 
         if len(response) > 1:
+            caller_name = inspect.stack()[1][3]
+            print(f'Request caller: {caller_name}')
             address, data = self._unpack_message(response)
             if address == self.address:
-                caller_name = inspect.stack()[1][3]
-                print(f'Request caller: {caller_name}')
                 return data
 
         raise ValueError(f"Error while read data from socket")
