@@ -64,13 +64,13 @@ class Mercury236:
         self._is_socket_open = False
 
     def request(self, *args):
+        caller_name = inspect.stack()[1][3]
+        print(f'Request caller: {caller_name}')
         self._socket.sendall(self._pack_message(self.address, *args))
 
         response = self._read_socket()
 
         if len(response) > 1:
-            caller_name = inspect.stack()[1][3]
-            print(f'Request caller: {caller_name}')
             address, data = self._unpack_message(response)
             if address == self.address:
                 return data
@@ -144,8 +144,12 @@ class Mercury236:
 
     @staticmethod
     def _pack_message(*args, crc=True):
+        caller_name = inspect.stack()[1][3]
         message = bytes(args)
-        return message + crc16(message) if crc else message
+        print(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
+        result = message + crc16(message) if crc else message
+        print(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
+        return result
 
     @staticmethod
     def _unpack_message(message: bytes):
