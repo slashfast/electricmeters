@@ -192,6 +192,12 @@ class Mercury236:
         print(config)
         converters = config['converters']
         response_template = dict.get(config, 'response_template', None)
+
+        access_level = dict.get(config, 'access_level', None)
+        password = dict.get(config, 'password', None)
+        payload = dict.get(config, 'payload', None)
+        bytes_order = dict.get(config, 'order', None)
+
         if response_template == '':
             response_template = None
         debug = dict.get(config, 'debug', False)
@@ -212,11 +218,19 @@ class Mercury236:
 
             for meter in meters:
                 address = meter['address']
-                access_level = meter['access_level']
-                password = meter['password']
-                payload = meter['payload']
+                access_level = dict.get(meter, 'access_level', access_level)
+                password = dict.get(meter, 'password', password)
+                payload = dict.get(meter, 'payload', payload)
+                bytes_order = dict.get(meter, 'order', bytes_order)
+
+                if access_level is None:
+                    raise ValueError('The parameter "access_level" is missing')
+                if password is None:
+                    raise ValueError('The parameter "password" is missing')
+                if payload is None:
+                    raise ValueError('The parameter "payload" is missing')
+
                 hex_payload = hex(int.from_bytes(payload))
-                bytes_order = dict.get(meter, 'order', None)
 
                 em_result = {
                     'address': address,
