@@ -209,6 +209,7 @@ class Mercury236:
 
         timestamp = dict.get(config, 'timestamp', False)
         delay = dict.get(config, 'delay', 0)
+        pretty = dict.get(config, 'pretty', False)
 
         if response_template == '':
             response_template = None
@@ -278,7 +279,7 @@ class Mercury236:
 
             result.append(converter_result)
 
-        json_output = json.dumps(result)
+        json_output = json.dumps(result, indent=2 if pretty else None)
 
         logger.info(json_output)
 
