@@ -23,6 +23,7 @@ import json
 import logging
 import socket
 from argparse import Namespace
+from datetime import datetime
 from functools import reduce
 from itertools import batched
 from math import log10
@@ -197,6 +198,7 @@ class Mercury236:
         password = dict.get(config, 'password', None)
         payload = dict.get(config, 'payload', None)
         bytes_order = dict.get(config, 'order', None)
+        output_filename = dict.get(config, 'output_filename', None)
 
         if response_template == '':
             response_template = None
@@ -253,7 +255,14 @@ class Mercury236:
 
             result.append(converter_result)
 
-        print(json.dumps(result))
+        json_output = json.dumps(result)
+
+        print(json_output)
+
+        if output_filename is not None:
+            date = datetime.now().strftime("%d_%m_%y_%H_%M_%s")
+            with open(f'{output_filename}_{date}.json', 'w', encoding='utf8') as output:
+                output.write(json_output)
 
     @staticmethod
     def cli(args: Namespace):
