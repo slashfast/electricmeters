@@ -155,7 +155,6 @@ class Mercury236:
     @staticmethod
     def _pack_message(*args, crc=True, debug=False):
         caller_name = inspect.stack()[1][3]
-        print(args)
         message = bytes(args)
         if debug:
             print(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
