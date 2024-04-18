@@ -23,6 +23,7 @@ import inspect
 import json
 import logging
 import socket
+import time
 from argparse import Namespace
 from datetime import datetime
 from functools import reduce
@@ -207,6 +208,7 @@ class Mercury236:
         output_filename = dict.get(config, 'output_filename', None)
 
         timestamp = dict.get(config, 'timestamp', False)
+        delay = dict.get(config, 'delay', 0)
 
         if response_template == '':
             response_template = None
@@ -257,6 +259,8 @@ class Mercury236:
                     em_result = {
                         'address': address
                     }
+
+                    time.sleep(delay)
 
                     try:
                         with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
