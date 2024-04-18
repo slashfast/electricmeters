@@ -206,6 +206,8 @@ class Mercury236:
         bytes_order = dict.get(config, 'order', None)
         output_filename = dict.get(config, 'output_filename', None)
 
+        timestamp = dict.get(config, 'timestamp', False)
+
         if response_template == '':
             response_template = None
         debug = dict.get(config, 'debug', False)
@@ -277,8 +279,8 @@ class Mercury236:
         logger.info(json_output)
 
         if output_filename is not None:
-            date = datetime.now().strftime("%d_%m_%y_%H_%M_%S")
-            with open(f'{output_filename}_{date}.json', 'w', encoding='utf8') as output:
+            date = f'_{datetime.now().strftime("%d_%m_%y_%H_%M_%S")}' if timestamp else ''
+            with open(f'{output_filename}{date}.json', 'w', encoding='utf8') as output:
                 output.write(json_output)
 
     @staticmethod
