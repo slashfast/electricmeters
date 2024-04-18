@@ -275,7 +275,7 @@ class Mercury236:
                         Mercury236.log_error(address, ip, port, e)
 
                     group_result['meters'].append(em_result)
-                    converter_result['groups'].append(group_result)
+                converter_result['groups'].append(group_result)
 
             result.append(converter_result)
 
