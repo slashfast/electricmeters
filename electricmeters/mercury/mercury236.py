@@ -18,6 +18,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import inspect
 import json
 import logging
@@ -31,41 +32,46 @@ from math import log10
 from electricmeters.crc16 import crc16
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(levelname)s | %(message)s')
 
 
 class Mercury236:
     def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111',
                  metric_prefix: int = 1,
                  debug: bool = False):
-        self.debug = debug
+        self._debug = debug
         self._is_socket_open = False
 
-        self.metric_prefix = 1
+        self._metric_prefix = 1
         if metric_prefix == 10 ** log10(metric_prefix):
-            self.metric_prefix = metric_prefix
-        elif self.debug:
-            print(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
+            self._metric_prefix = metric_prefix
+        elif self._debug:
+            logger.warning(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
 
-        self.address = address % 1000
-        if self.address == 0:
-            self.address = 1
-        elif self.address > 240:
-            self.address = address % 100
+        self._address = address % 1000
+        if self._address == 0:
+            self._address = 1
+        elif self._address > 240:
+            self._address = address % 100
 
-        self.access_level = access_level
-        self.password = [int(c) for c in password]
+        self._access_level = access_level
+        self._password = [int(c) for c in password]
         if len(password) != 6:
             raise ValueError('Password length must be equal to 6')
 
-        self.ip = ip
-        self.port = port
+        self._ip = ip
+        self._port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket_timeout = 5
         self._socket.settimeout(self._socket_timeout)
 
+    @property
+    def address(self):
+        return self._address
+
     def open(self):
-        self._socket.connect((self.ip, self.port))
-        self.request(0x01, self.access_level, *self.password)
+        self._socket.connect((self._ip, self._port))
+        self.request(0x01, self._access_level, *self._password)
         self._is_socket_open = True
 
     def close(self):
@@ -75,15 +81,15 @@ class Mercury236:
 
     def request(self, *args):
         caller_name = inspect.stack()[1][3]
-        if self.debug:
-            print(f'Request caller: {caller_name}')
-        self._socket.sendall(self._pack_message(self.address, *args, debug=self.debug))
+        if self._debug:
+            logger.info(f'Request caller: {caller_name}')
+        self._socket.sendall(self._pack_message(self._address, *args, debug=self._debug))
 
         response = self._read_socket()
 
         if len(response) > 1:
-            address, data = self._unpack_message(response, debug=self.debug)
-            if address == self.address:
+            address, data = self._unpack_message(response, debug=self._debug)
+            if address == self._address:
                 return data
 
         raise ValueError(f"Error while read data from socket")
@@ -112,7 +118,7 @@ class Mercury236:
 
     def read_unsafe(self, *args, order: list[int] = None):
         data = self.read(*args, order=order)
-        return {i: value / self.metric_prefix if self.metric_prefix > 1 else value for i, value in enumerate(data)}
+        return {i: value / self._metric_prefix if self._metric_prefix > 1 else value for i, value in enumerate(data)}
 
     def read_energy(self, request_code: int = 0x05, array: int = 0x00, month: int = 0x01, tariff: int = 0x00):
         if request_code not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13]:
@@ -137,10 +143,10 @@ class Mercury236:
 
         if request_code == 5:
             return {
-                'active+': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data),
-                'active-': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data),
-                'reactive+': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data),
-                'reactive-': next(data) / self.metric_prefix if self.metric_prefix > 1 else next(data)
+                'active+': next(data) / self._metric_prefix if self._metric_prefix > 1 else next(data),
+                'active-': next(data) / self._metric_prefix if self._metric_prefix > 1 else next(data),
+                'reactive+': next(data) / self._metric_prefix if self._metric_prefix > 1 else next(data),
+                'reactive-': next(data) / self._metric_prefix if self._metric_prefix > 1 else next(data)
             }
         else:
             raise NotImplementedError()
@@ -158,21 +164,21 @@ class Mercury236:
         caller_name = inspect.stack()[1][3]
         message = bytes(args)
         if debug:
-            print(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
+            logger.info(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
         result = message + crc16(message) if crc else message
         if debug:
-            print(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
+            logger.info(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
         return result
 
     @staticmethod
     def _unpack_message(message: bytes, debug: bool = False):
         caller_name = inspect.stack()[1][3]
         if debug:
-            print(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
+            logger.info(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
         address = int.from_bytes(message[:1], 'big')
         data = list(message[1:])
         if debug:
-            print(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
+            logger.info(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
         return address, data
 
     @staticmethod
@@ -190,7 +196,7 @@ class Mercury236:
 
     @staticmethod
     def compose(config: dict):
-        print(config)
+        logger.info(config)
         converters = config['converters']
         response_template = dict.get(config, 'response_template', None)
 
@@ -209,58 +215,69 @@ class Mercury236:
         for converter in converters:
             ip = converter['ip']
             port = converter['port']
-            meters = converter['meters']
+
+            try:
+                groups = converter['groups']
+            except KeyError:
+                groups = [{'group': None, 'meters': converter['meters']}]
 
             converter_result = {
                 'ip': ip,
-                'port': port
+                'port': port,
+                'groups': []
             }
 
-            meters_results = []
-
-            for meter in meters:
-                address = meter['address']
-                access_level = dict.get(meter, 'access_level', access_level)
-                password = dict.get(meter, 'password', password)
-                payload = dict.get(meter, 'payload', payload)
-                bytes_order = dict.get(meter, 'order', bytes_order)
-
-                if access_level is None:
-                    raise ValueError('The parameter "access_level" is missing')
-                if password is None:
-                    raise ValueError('The parameter "password" is missing')
-                if payload is None:
-                    raise ValueError('The parameter "payload" is missing')
-
-                hex_payload = hex(int.from_bytes(payload))
-
-                em_result = {
-                    'address': address,
-                    'access_level': access_level,
-                    'password': password
+            for group in groups:
+                group_result = {
+                    'name': group['group'],
+                    'meters': []
                 }
 
-                try:
-                    with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
-                        if response_template == 'read_energy' and len(payload) == 4:
-                            em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
-                        elif response_template is None:
-                            em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
-                except Exception as e:
-                    em_result[f'error'] = f'{e}'
-                    Mercury236.log_error(address, ip, port, e)
-                meters_results.append(em_result)
+                for meter in group['meters']:
+                    if isinstance(meter, int):
+                        address = meter
+                    else:
+                        address = meter['address']
+                        access_level = dict.get(meter, 'access_level', access_level)
+                        password = dict.get(meter, 'password', password)
+                        payload = dict.get(meter, 'payload', payload)
+                        bytes_order = dict.get(meter, 'order', bytes_order)
 
-            converter_result['meters'] = meters_results
+                    if access_level is None:
+                        raise ValueError('The parameter "access_level" is missing')
+                    if password is None:
+                        raise ValueError('The parameter "password" is missing')
+                    if payload is None:
+                        raise ValueError('The parameter "payload" is missing')
+
+                    hex_payload = hex(int.from_bytes(payload))
+
+                    em_result = {
+                        'address': address
+                    }
+
+                    try:
+                        with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
+                            em_result['address'] = em.address
+                            if response_template == 'read_energy' and len(payload) == 4:
+                                em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
+                            elif response_template is None:
+                                em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
+                    except Exception as e:
+                        em_result[f'error'] = f'{e}'
+                        Mercury236.log_error(address, ip, port, e)
+
+                    group_result['meters'].append(em_result)
+                    converter_result['groups'].append(group_result)
 
             result.append(converter_result)
 
         json_output = json.dumps(result)
 
-        print(json_output)
+        logger.info(json_output)
 
         if output_filename is not None:
-            date = datetime.now().strftime("%d_%m_%y_%H_%M_%s")
+            date = datetime.now().strftime("%d_%m_%y_%H_%M_%S")
             with open(f'{output_filename}_{date}.json', 'w', encoding='utf8') as output:
                 output.write(json_output)
 
