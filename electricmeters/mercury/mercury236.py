@@ -100,12 +100,12 @@ class Mercury236:
         buffer = b''
 
         while not data:
-            self._socket.settimeout(1)
+            self._socket.settimeout(self._socket_timeout)
             data = self._socket.recv(1000)
             if data:
                 buffer += data
 
-        self._socket.settimeout(self._socket_timeout)
+        self._socket.settimeout(None)
 
         return buffer
 
