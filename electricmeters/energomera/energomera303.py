@@ -30,7 +30,7 @@ class Energomera303:
         self._is_socket_open = False
         self._session = session
         self._is_session = False
-        
+
         if isinstance(address, int):
             address = str(address)
 
@@ -342,7 +342,7 @@ class Energomera303:
                     try:
                         with Energomera303(ip, port, address, password, metric_prefix, debug) as em:
                             em_result['address'] = em.address
-                            if response_template == 'read_energy' and len(payload) == 4:
+                            if response_template == 'read_energy':
                                 em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
                             else:
                                 raise ValueError('Template must be specified')
