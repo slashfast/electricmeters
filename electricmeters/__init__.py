@@ -1,5 +1,5 @@
-from electricmeters import mercury
-from electricmeters.crc16 import crc16
+from electricmeters import mercury, energomera
 from electricmeters.compose import compose
+from electricmeters.crc16 import crc16
 
-__all__ = ['crc16', 'compose', 'mercury']
+__all__ = ['crc16', 'compose', 'mercury', 'energomera']
