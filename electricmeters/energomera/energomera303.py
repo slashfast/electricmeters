@@ -228,7 +228,7 @@ class Energomera303:
 
         if payload == 'NDPE':
             value = (date.today() - timedelta(days=1)).strftime(f'%{self._wtz}d.%{self._wtz}m.%y')
-            
+
         parameter = f'E{payload}({value})'
         if self._debug:
             logger.debug(f'Prepared parameter: {parameter}')
@@ -327,7 +327,7 @@ class Energomera303:
                     if payload is None:
                         raise ValueError('The parameter "payload" is missing')
 
-                    hex_payload = hex(int.from_bytes(payload))
+                    # hex_payload = hex(int.from_bytes(payload))
 
                     em_result = {
                         'address': address
