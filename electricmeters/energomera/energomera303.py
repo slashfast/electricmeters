@@ -30,6 +30,10 @@ class Energomera303:
         self._is_socket_open = False
         self._session = session
         self._is_session = False
+        
+        if isinstance(address, int):
+            address = str(address)
+
         if len(address) < 9:
             raise ValueError('Address length must be 9')
 
