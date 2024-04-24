@@ -20,7 +20,7 @@ _EOL = b'\x0D\x0a'  # \r\n
 _INIT = b'\x2f\x3f'  # / ?
 _CMD_SOHR = b'\x01\x52\x31\x02'  # SOH R 1 STX
 
-_VERBOSE_DEBUG = False
+_VERBOSE_DEBUG = True
 
 
 class Energomera303:
@@ -343,7 +343,7 @@ class Energomera303:
                         with Energomera303(ip, port, address, password, metric_prefix, debug=debug) as em:
                             em_result['address'] = em.address
                             if response_template == 'read_energy':
-                                em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
+                                em_result |= em.read_energy(*payload)
                             else:
                                 raise ValueError('Template must be specified')
                     except Exception as e:
