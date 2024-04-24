@@ -101,7 +101,8 @@ class Energomera303:
                 if self._debug and _VERBOSE_DEBUG:
                     unpacked_data = self._unpack_message(data)
                     logger.warning(
-                        f'Recv: {self.pretty_hex(unpacked_data)}\t{unpacked_data.decode('ascii').replace('\r\n', '<CR><LF>')}')
+                        f'Recv: {self.pretty_hex(unpacked_data)}\t{unpacked_data.decode('ascii').replace('\r\n',
+                                                                                                         '<CR><LF>')}')
 
                 if data is None and self._debug and _VERBOSE_DEBUG:
                     logger.critical('DATA IS NONE')
@@ -149,41 +150,39 @@ class Energomera303:
 
     @staticmethod
     def bcc(data: bytes):
-        logger.debug(repr(data))
-        logger.debug(repr((sum(data) & 0xFF).to_bytes()))
-        return (sum(data) & 0x7F).to_bytes()
+        return Energomera303.parity_check((sum(data) & 0x7F)).to_bytes()
 
     def _pack_message(self, *args, parity_check=True, bcc=True):
         caller_name = inspect.stack()[1][3]
-        result = b''
+        packed = b''
         for arg in args:
             if arg is None:
                 continue
             if isinstance(arg, str):
                 arg = bytes(map(ord, arg))
 
-            result += arg
+            packed += arg
         if self._debug and _VERBOSE_DEBUG:
-            logger.debug(f'Before pack ({caller_name}): {self.pretty_hex(result)}\t{result}')
+            logger.debug(f'Before pack ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
 
         if parity_check:
             if self._debug and _VERBOSE_DEBUG:
                 logger.debug(
-                    f'Before parity check ({caller_name}): {self.pretty_hex(result)}\t{result}')
-            result = bytes(map(self.parity_check, result))
+                    f'Before parity check ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+            packed = bytes(map(self.parity_check, packed))
             if self._debug and _VERBOSE_DEBUG:
-                logger.debug(f'After parity check ({caller_name}): {self.pretty_hex(result)}\t{result}')
+                logger.debug(f'After parity check ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
 
         if bcc:
             if self._debug and _VERBOSE_DEBUG:
-                logger.debug(f'Before BCC ({caller_name}): {self.pretty_hex(result)}\t{result}')
-            result += self.bcc(result[1:])
+                logger.debug(f'Before BCC ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+            packed += self.bcc(packed[1:])
             if self._debug and _VERBOSE_DEBUG:
-                logger.debug(f'After BCC ({caller_name}): {self.pretty_hex(result)}\t{result}')
+                logger.debug(f'After BCC ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
 
         if self._debug:
-            logger.debug(f'After pack ({caller_name}): {self.pretty_hex(result)}\t{result}')
-        return result
+            logger.debug(f'After pack ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+        return packed
 
     def _unpack_message(self, data: bytes):
         caller_name = inspect.stack()[1][3]
@@ -340,7 +339,7 @@ class Energomera303:
                     time.sleep(delay)
 
                     try:
-                        with Energomera303(ip, port, address, password, metric_prefix, debug) as em:
+                        with Energomera303(ip, port, address, password, metric_prefix, debug=debug) as em:
                             em_result['address'] = em.address
                             if response_template == 'read_energy':
                                 em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
@@ -360,8 +359,8 @@ class Energomera303:
         logger.info(json_output)
 
         if output_filename is not None:
-            date = f'_{datetime.now().strftime("%d_%m_%y_%H_%M_%S")}' if timestamp else ''
-            with open(f'{output_filename}{date}.json', 'w', encoding='utf8') as output:
+            current_date = f'_{datetime.now().strftime("%d_%m_%y_%H_%M_%S")}' if timestamp else ''
+            with open(f'{output_filename}{current_date}.json', 'w', encoding='utf8') as output:
                 output.write(json_output)
 
     @staticmethod
@@ -374,15 +373,3 @@ class Energomera303:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-
-if __name__ == "__main__":
-    pass
-    # without leading zero
-
-    # with Energomera303('10.101.0.101', 101, '172243930', password='777777', debug=True, session=True) as em:
-    #     yesterday = (date.today() - timedelta(days=1)).strftime(f'%{wtz}d.%{wtz}m.%y')
-    #     for val in em.read_energy('NDPE', value=yesterday):
-    #         logger.info(val)
-    # response = em.request(raw=b'\x81\xd2\xb1\x82\xc5NDP\xc5(\xb20.\xb4.\xb2\xb4\xa9\x03\x1d')
-    # logger.info(repr(em.request(_SOH, 'R1', _STX, f'ENDPE({yesterday})', _ETX, bcc=True)))
