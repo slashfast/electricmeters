@@ -4,6 +4,7 @@ import logging
 import os
 import socket
 import time
+import traceback
 from datetime import datetime, date, timedelta
 from math import log10
 
@@ -348,6 +349,8 @@ class Energomera303:
                     except Exception as e:
                         em_result[f'error'] = f'{e}'
                         Energomera303.log_error(address, ip, port, e)
+                        if debug:
+                            traceback.print_exc()
 
                     group_result['meters'].append(em_result)
                 converter_result['groups'].append(group_result)
