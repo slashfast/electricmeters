@@ -20,7 +20,7 @@ _EOL = b'\x0D\x0a'  # \r\n
 _INIT = b'\x2f\x3f'  # / ?
 _CMD_SOHR = b'\x01\x52\x31\x02'  # SOH R 1 STX
 
-_VERBOSE_DEBUG = True
+_VERBOSE_DEBUG = False
 
 
 class Energomera303:
