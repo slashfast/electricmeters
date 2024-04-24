@@ -301,7 +301,9 @@ class Energomera303:
 
     @staticmethod
     def compose(config: dict):
-        logger.info(config)
+        silent = dict.get(config, 'silent', True)
+        if not silent:
+            logger.info(config)
         converters = config['converters']
         response_template = dict.get(config, 'response_template', None)
 
@@ -386,7 +388,10 @@ class Energomera303:
 
         json_output = json.dumps(result, indent=2 if pretty else None)
 
-        logger.info(json_output)
+        if silent:
+            print(json_output)
+        else:
+            logger.info(json_output)
 
         if output_filename is not None:
             current_date = f'_{datetime.now().strftime("%d_%m_%y_%H_%M_%S")}' if timestamp else ''
