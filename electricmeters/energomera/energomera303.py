@@ -287,6 +287,7 @@ class Energomera303:
         password = dict.get(config, 'password', None)
         payload = dict.get(config, 'payload', None)
         bytes_order = dict.get(config, 'order', None)
+        session = dict.get(config, 'session', True)
         output_filename = dict.get(config, 'output_filename', None)
 
         timestamp = dict.get(config, 'timestamp', False)
@@ -344,7 +345,8 @@ class Energomera303:
                     time.sleep(delay)
 
                     try:
-                        with Energomera303(ip, port, address, password, metric_prefix, debug=debug) as em:
+                        with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
+                                           session=session) as em:
                             em_result['address'] = em.address
                             if response_template == 'read_energy':
                                 em_result |= em.read_energy(*payload)
