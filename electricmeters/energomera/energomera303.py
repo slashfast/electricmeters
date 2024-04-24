@@ -151,7 +151,11 @@ class Energomera303:
 
     @staticmethod
     def bcc(data: bytes):
-        return Energomera303.parity_check((sum(data) & 0x7F)).to_bytes()
+        bcc = Energomera303.parity_check((sum(data) & 0x7F)).to_bytes()
+        if _VERBOSE_DEBUG:
+            logger.debug(f"BCC input: {repr(data)}")
+            logger.debug(f'BCC: {repr(bcc)}')
+        return bcc
 
     def _pack_message(self, *args, parity_check=True, bcc=True):
         caller_name = inspect.stack()[1][3]
