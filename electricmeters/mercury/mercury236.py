@@ -24,6 +24,7 @@ import json
 import logging
 import socket
 import time
+import traceback
 from argparse import Namespace
 from datetime import datetime
 from functools import reduce
@@ -47,7 +48,7 @@ class Mercury236:
         if metric_prefix == 10 ** log10(metric_prefix):
             self._metric_prefix = metric_prefix
         elif self._debug:
-            logger.warning(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
+            logger.debug(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
 
         self._address = address % 1000
         if self._address == 0:
@@ -83,7 +84,7 @@ class Mercury236:
     def request(self, *args):
         caller_name = inspect.stack()[1][3]
         if self._debug:
-            logger.info(f'Request caller: {caller_name}')
+            logger.debug(f'Request caller: {caller_name}')
         self._socket.sendall(self._pack_message(self._address, *args, debug=self._debug))
 
         response = self._read_socket()
@@ -165,21 +166,21 @@ class Mercury236:
         caller_name = inspect.stack()[1][3]
         message = bytes(args)
         if debug:
-            logger.info(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
+            logger.debug(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
         result = message + crc16(message) if crc else message
         if debug:
-            logger.info(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
+            logger.debug(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
         return result
 
     @staticmethod
     def _unpack_message(message: bytes, debug: bool = False):
         caller_name = inspect.stack()[1][3]
         if debug:
-            logger.info(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
+            logger.debug(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
         address = int.from_bytes(message[:1], 'big')
         data = list(message[1:])
         if debug:
-            logger.info(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
+            logger.debug(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
         return address, data
 
     @staticmethod
@@ -197,24 +198,29 @@ class Mercury236:
 
     @staticmethod
     def compose(config: dict):
-        logger.info(config)
+        max_retries = config.get('max_retries', 3)
+        silent = config.get('silent', True)
+        if not silent:
+            logger.info(config)
         converters = config['converters']
-        response_template = dict.get(config, 'response_template', None)
+        response_template = config.get('response_template', None)
+        global_params = {
+            'access_level': config.get('access_level', None),
+            'password': config.get('password', None),
+            'payload': config.get('payload', None),
+            'bytes_order': config.get('bytes_order', None)
+        }
 
-        access_level = dict.get(config, 'access_level', None)
-        password = dict.get(config, 'password', None)
-        payload = dict.get(config, 'payload', None)
-        bytes_order = dict.get(config, 'order', None)
-        output_filename = dict.get(config, 'output_filename', None)
+        output_filename = config.get('output_filename', None)
 
-        timestamp = dict.get(config, 'timestamp', False)
-        delay = dict.get(config, 'delay', 0)
-        pretty = dict.get(config, 'pretty', False)
+        timestamp = config.get('timestamp', False)
+        delay = config.get('delay', 0)
+        pretty = config.get('pretty', False)
 
         if response_template == '':
             response_template = None
-        debug = dict.get(config, 'debug', False)
-        metric_prefix = dict.get(config, 'metric_prefix', 1)
+        debug = config.get('debug', False)
+        metric_prefix = config.get('metric_prefix', 1)
 
         result = []
         for converter in converters:
@@ -239,14 +245,20 @@ class Mercury236:
                 }
 
                 for meter in group['meters']:
+                    serial_number = None
                     if isinstance(meter, int):
                         address = meter
+                        access_level = global_params['access_level']
+                        password = global_params['password']
+                        payload = global_params['payload']
+                        bytes_order = global_params['bytes_order']
                     else:
+                        serial_number = meter.get('serial_number', None)
                         address = meter['address']
-                        access_level = dict.get(meter, 'access_level', access_level)
-                        password = dict.get(meter, 'password', password)
-                        payload = dict.get(meter, 'payload', payload)
-                        bytes_order = dict.get(meter, 'order', bytes_order)
+                        access_level = meter.get('access_level', global_params['access_level'])
+                        password = meter.get('password', global_params['password'])
+                        payload = meter.get('payload', global_params['payload'])
+                        bytes_order = meter.get('order', global_params['bytes_order'])
 
                     if access_level is None:
                         raise ValueError('The parameter "access_level" is missing')
@@ -257,22 +269,32 @@ class Mercury236:
 
                     hex_payload = hex(int.from_bytes(payload))
 
-                    em_result = {
-                        'address': address
-                    }
+                    em_result = {}
 
-                    time.sleep(delay)
+                    if isinstance(serial_number, int):
+                        em_result['serial_number'] = serial_number
+                    else:
+                        em_result['address'] = address
 
-                    try:
-                        with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
-                            em_result['address'] = em.address
-                            if response_template == 'read_energy' and len(payload) == 4:
-                                em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
-                            elif response_template is None:
-                                em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
-                    except Exception as e:
-                        em_result[f'error'] = f'{e}'
-                        Mercury236.log_error(address, ip, port, e)
+                    if delay > 0:
+                        time.sleep(delay)
+
+                    for retries in range(max_retries):
+                        try:
+                            with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
+                                em_result['address'] = em.address
+                                if response_template == 'read_energy' and len(payload) == 4:
+                                    em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
+                                elif response_template is None:
+                                    em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
+                            break
+                        except Exception as e:
+                            if retries == max_retries - 1:
+                                em_result[f'error'] = f'{e}'
+                                if not silent:
+                                    Mercury236.log_error(address, ip, port, e)
+                            if debug:
+                                traceback.print_exc()
 
                     group_result['meters'].append(em_result)
                 converter_result['groups'].append(group_result)
@@ -280,8 +302,10 @@ class Mercury236:
             result.append(converter_result)
 
         json_output = json.dumps(result, indent=2 if pretty else None)
-
-        logger.info(json_output)
+        if silent:
+            print(json_output)
+        else:
+            logger.info(json_output)
 
         if output_filename is not None:
             date = f'_{datetime.now().strftime("%d_%m_%y_%H_%M_%S")}' if timestamp else ''
