@@ -300,8 +300,8 @@ class Mercury236:
                         if done:
                             group_result['meters'].append(em_result)
                     converter_result['groups'].append(group_result)
-                if len(group['meters']) == 0:
-                    break
+                    if len(group['meters']) == 0:
+                        break
 
             result.append(converter_result)
 
