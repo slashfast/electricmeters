@@ -4,6 +4,9 @@
 # Config
 /*.toml
 
+# Output
+*.json
+
 # Poetry
 dist
 !pyproject.toml
