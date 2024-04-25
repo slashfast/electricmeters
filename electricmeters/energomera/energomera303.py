@@ -61,9 +61,12 @@ class Energomera303:
 
         self._metric_prefix = 1
         if metric_prefix == 10 ** log10(metric_prefix):
-            self._metric_prefix = metric_prefix
+            if metric_prefix >= 1000:
+                self._metric_prefix = 1000 / metric_prefix
+            else:
+                self._metric_prefix = metric_prefix * 1000
         elif self._debug:
-            logger.warning(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
+            logger.debug(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
 
         self._wtz = '#' if os.name == 'nt' else '-'
         self._address = address[-9:]
@@ -122,7 +125,7 @@ class Energomera303:
 
                 if self._debug and _VERBOSE_DEBUG:
                     unpacked_data = self._unpack_message(data)
-                    logger.warning(
+                    logger.debug(
                         f'Recv: {self.pretty_hex(unpacked_data)}\t{unpacked_data.decode('ascii').replace('\r\n',
                                                                                                          '<CR><LF>')}')
 
@@ -139,27 +142,27 @@ class Energomera303:
 
                     if first_byte == _ACK:
                         if self._debug:
-                            logger.warning("ACK found")
+                            logger.debug("ACK found")
                         break
 
                     elif is_stx := first_byte == _STX or first_byte == _SOH:
                         if self._debug and _VERBOSE_DEBUG:
-                            logger.warning("First is STX" if is_stx else "First is SOH")
+                            logger.debug("First is STX" if is_stx else "First is SOH")
                         if self._unpack_message(buffer[-2].to_bytes()) == _ETX:
                             if self._debug:
-                                logger.warning("ETX found")
+                                logger.debug("ETX found")
                             break
 
                     elif first_byte == b'\x2f':
                         if self._debug and _VERBOSE_DEBUG:
-                            logger.warning("First is /")
+                            logger.debug("First is /")
                         if self._unpack_message(buffer[-2:]) == _EOL:
                             if self._debug:
-                                logger.warning("EOL found")
+                                logger.debug("EOL found")
                             break
                     else:
                         if self._debug and _VERBOSE_DEBUG:
-                            logger.warning(f"First byte: {first_byte}")
+                            logger.debug(f"First byte: {first_byte}")
 
                 except IndexError:
                     pass
@@ -252,6 +255,9 @@ class Energomera303:
 
             # raise ValueError(f"Error while read data from socket")
 
+    def to_metter_prefix(self, value: float):
+        return value * self._metric_prefix
+
     def read_energy(self, *selectors: str, value=''):
         payload = ''.join(selectors)
 
@@ -264,7 +270,7 @@ class Energomera303:
         response = self.request(_SOH, 'R1', _STX, parameter, _ETX, bcc=True)
         response = response[6:-2]
         response = response.split('\r\n')
-        response = iter(map(lambda x: float(x.strip('()\r\n')), response))
+        response = iter(map(lambda x: self.to_metter_prefix(float(x.strip('()\r\n'))), response))
 
         if payload == 'NDPE':
             return {
@@ -301,28 +307,30 @@ class Energomera303:
 
     @staticmethod
     def compose(config: dict):
-        silent = dict.get(config, 'silent', True)
-
         max_retries = config.get('max_retries', 3)
+        silent = config.get('silent', True)
         if not silent:
             logger.info(config)
         converters = config['converters']
-        response_template = dict.get(config, 'response_template', None)
+        response_template = config.get('response_template', None)
 
-        password = dict.get(config, 'password', None)
-        payload = dict.get(config, 'payload', None)
-        bytes_order = dict.get(config, 'order', None)
-        session = dict.get(config, 'session', True)
-        output_filename = dict.get(config, 'output_filename', None)
+        global_params = {
+            'password': config.get('password', None),
+            'payload': config.get('payload', None)
+        }
 
-        timestamp = dict.get(config, 'timestamp', False)
-        delay = dict.get(config, 'delay', 0)
-        pretty = dict.get(config, 'pretty', False)
+        session = config.get('session', True)
+
+        output_filename = config.get('output_filename', None)
+
+        timestamp = config.get('timestamp', False)
+        delay = config.get('delay', 0)
+        pretty = config.get('pretty', False)
 
         if response_template == '':
             response_template = None
-        debug = dict.get(config, 'debug', False)
-        metric_prefix = dict.get(config, 'metric_prefix', 1)
+        debug = config.get('debug', False)
+        metric_prefix = config.get('metric_prefix', 1)
 
         result = []
         for converter in converters:
@@ -345,46 +353,52 @@ class Energomera303:
                     'name': group['group'],
                     'meters': []
                 }
+                for retry in range(max_retries):
+                    for meter in group['meters'].copy():
+                        done = False
+                        if isinstance(meter, int):
+                            address = meter
+                            password = global_params['password']
+                            payload = global_params['payload']
+                        else:
+                            address = meter['address']
+                            password = meter.get('password', global_params['password'])
+                            payload = meter.get('payload', global_params['payload'])
 
-                for meter in group['meters']:
-                    if isinstance(meter, int):
-                        address = meter
-                    else:
-                        address = meter['address']
-                        password = dict.get(meter, 'password', password)
-                        payload = dict.get(meter, 'payload', payload)
+                        if password is None:
+                            raise ValueError('password is missing')
+                        if payload is None:
+                            raise ValueError('payload is missing')
+                        if response_template not in ['read_energy']:
+                            raise ValueError(f'unknown template: {response_template}')
 
-                        bytes_order = dict.get(meter, 'order', bytes_order)
+                        em_result = {
+                            'address': address
+                        }
 
-                    if password is None:
-                        raise ValueError('The parameter "password" is missing')
-                    if payload is None:
-                        raise ValueError('The parameter "payload" is missing')
+                        if delay > 0:
+                            time.sleep(delay)
 
-                    em_result = {
-                        'address': address
-                    }
-
-                    time.sleep(delay)
-
-                    try:
-                        with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
-                                           session=session) as em:
-                            em_result['address'] = em.address
-                            if response_template == 'read_energy':
+                        try:
+                            with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
+                                               session=session) as em:
+                                em_result['address'] = em.address
                                 em_result |= em.read_energy(*payload)
-                            else:
-                                raise ValueError('Template must be specified')
-                    except Exception as e:
-                        em_result[f'error'] = f'{e}'
-                        if not silent:
-                            Energomera303.log_error(address, ip, port, e)
-                        if debug:
-                            traceback.print_exc()
-
-                    group_result['meters'].append(em_result)
-                converter_result['groups'].append(group_result)
-
+                            group['meters'].remove(meter)
+                            done = True
+                        except Exception as e:
+                            if retry == max_retries - 1:
+                                em_result[f'error'] = f'{e}'
+                                done = True
+                            if not silent:
+                                Energomera303.log_error(address, ip, port, e)
+                            if debug:
+                                traceback.print_exc()
+                        if done:
+                            group_result['meters'].append(em_result)
+                    converter_result['groups'].append(group_result)
+                    if len(group['meters']) == 0:
+                        break
             result.append(converter_result)
 
         json_output = json.dumps(result, indent=2 if pretty else None)

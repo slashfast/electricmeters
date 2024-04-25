@@ -262,11 +262,11 @@ class Mercury236:
                             bytes_order = meter.get('order', global_params['bytes_order'])
 
                         if access_level is None:
-                            raise ValueError('The parameter "access_level" is missing')
+                            raise ValueError('access_level is missing')
                         if password is None:
-                            raise ValueError('The parameter "password" is missing')
+                            raise ValueError('password is missing')
                         if payload is None:
-                            raise ValueError('The parameter "payload" is missing')
+                            raise ValueError('payload is missing')
 
                         hex_payload = hex(int.from_bytes(payload))
 
@@ -302,7 +302,6 @@ class Mercury236:
                     converter_result['groups'].append(group_result)
                     if len(group['meters']) == 0:
                         break
-
             result.append(converter_result)
 
         json_output = json.dumps(result, indent=2 if pretty else None)
