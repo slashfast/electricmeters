@@ -367,22 +367,20 @@ class Energomera303:
 
                     time.sleep(delay)
 
-                    for retries in range(max_retries):
-                        try:
-                            with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
-                                               session=session) as em:
-                                em_result['address'] = em.address
-                                if response_template == 'read_energy':
-                                    em_result |= em.read_energy(*payload)
-                                else:
-                                    raise ValueError('Template must be specified')
-                        except Exception as e:
-                            if retries == max_retries - 1:
-                                em_result[f'error'] = f'{e}'
-                                if not silent:
-                                    Energomera303.log_error(address, ip, port, e)
-                            if debug:
-                                traceback.print_exc()
+                    try:
+                        with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
+                                           session=session) as em:
+                            em_result['address'] = em.address
+                            if response_template == 'read_energy':
+                                em_result |= em.read_energy(*payload)
+                            else:
+                                raise ValueError('Template must be specified')
+                    except Exception as e:
+                        em_result[f'error'] = f'{e}'
+                        if not silent:
+                            Energomera303.log_error(address, ip, port, e)
+                        if debug:
+                            traceback.print_exc()
 
                     group_result['meters'].append(em_result)
                 converter_result['groups'].append(group_result)
