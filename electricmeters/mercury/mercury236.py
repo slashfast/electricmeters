@@ -243,43 +243,43 @@ class Mercury236:
                     'name': group['group'],
                     'meters': []
                 }
+                for retry in range(max_retries):
+                    for meter in group['meters'].copy():
+                        done = False
+                        serial_number = None
+                        if isinstance(meter, int):
+                            address = meter
+                            access_level = global_params['access_level']
+                            password = global_params['password']
+                            payload = global_params['payload']
+                            bytes_order = global_params['bytes_order']
+                        else:
+                            serial_number = meter.get('serial_number', None)
+                            address = meter['address']
+                            access_level = meter.get('access_level', global_params['access_level'])
+                            password = meter.get('password', global_params['password'])
+                            payload = meter.get('payload', global_params['payload'])
+                            bytes_order = meter.get('order', global_params['bytes_order'])
 
-                for meter in group['meters']:
-                    serial_number = None
-                    if isinstance(meter, int):
-                        address = meter
-                        access_level = global_params['access_level']
-                        password = global_params['password']
-                        payload = global_params['payload']
-                        bytes_order = global_params['bytes_order']
-                    else:
-                        serial_number = meter.get('serial_number', None)
-                        address = meter['address']
-                        access_level = meter.get('access_level', global_params['access_level'])
-                        password = meter.get('password', global_params['password'])
-                        payload = meter.get('payload', global_params['payload'])
-                        bytes_order = meter.get('order', global_params['bytes_order'])
+                        if access_level is None:
+                            raise ValueError('The parameter "access_level" is missing')
+                        if password is None:
+                            raise ValueError('The parameter "password" is missing')
+                        if payload is None:
+                            raise ValueError('The parameter "payload" is missing')
 
-                    if access_level is None:
-                        raise ValueError('The parameter "access_level" is missing')
-                    if password is None:
-                        raise ValueError('The parameter "password" is missing')
-                    if payload is None:
-                        raise ValueError('The parameter "payload" is missing')
+                        hex_payload = hex(int.from_bytes(payload))
 
-                    hex_payload = hex(int.from_bytes(payload))
+                        em_result = {}
 
-                    em_result = {}
+                        if isinstance(serial_number, int):
+                            em_result['serial_number'] = serial_number
+                        else:
+                            em_result['address'] = address
 
-                    if isinstance(serial_number, int):
-                        em_result['serial_number'] = serial_number
-                    else:
-                        em_result['address'] = address
+                        if delay > 0:
+                            time.sleep(delay)
 
-                    if delay > 0:
-                        time.sleep(delay)
-
-                    for retries in range(max_retries):
                         try:
                             with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
                                 em_result['address'] = em.address
@@ -287,17 +287,21 @@ class Mercury236:
                                     em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
                                 elif response_template is None:
                                     em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
-                            break
+                            group['meters'].remove(meter)
+                            done = True
                         except Exception as e:
-                            if retries == max_retries - 1:
+                            if retry == max_retries - 1:
                                 em_result[f'error'] = f'{e}'
-                                if not silent:
-                                    Mercury236.log_error(address, ip, port, e)
+                                done = True
+                            if not silent:
+                                Mercury236.log_error(address, ip, port, e)
                             if debug:
                                 traceback.print_exc()
-
-                    group_result['meters'].append(em_result)
-                converter_result['groups'].append(group_result)
+                        if done:
+                            group_result['meters'].append(em_result)
+                    converter_result['groups'].append(group_result)
+                if len(group['meters']) == 0:
+                    break
 
             result.append(converter_result)
 
