@@ -27,7 +27,7 @@ import socket
 import time
 import traceback
 from datetime import datetime, date, timedelta
-from math import log10
+from math import log10, trunc
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(levelname)s | %(message)s')
@@ -59,7 +59,6 @@ class Energomera303:
         if len(address) < 9:
             raise ValueError('Address length must be 9')
 
-        self._metric_prefix = 1000
         if metric_prefix == 10 ** log10(metric_prefix):
             if metric_prefix >= 1000:
                 self._metric_prefix = 1000 / metric_prefix
@@ -67,6 +66,7 @@ class Energomera303:
                 self._metric_prefix = metric_prefix * 1000
         elif self._debug:
             logger.debug(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
+            self._metric_prefix = 1000
 
         self._wtz = '#' if os.name == 'nt' else '-'
         self._address = address[-9:]
@@ -255,10 +255,11 @@ class Energomera303:
 
             # raise ValueError(f"Error while read data from socket")
 
-    def to_metter_prefix(self, value: float):
-        return value * self._metric_prefix
+    def to_metter_prefix(self, value: float, trunc_value=True) -> int | float:
+        result = value * self._metric_prefix
+        return trunc(result) if trunc_value else result
 
-    def read_energy(self, *selectors: str, value=''):
+    def read_energy(self, *selectors: str, value='', trunc_value=True):
         payload = ''.join(selectors)
 
         if payload == 'NDPE':
@@ -270,7 +271,8 @@ class Energomera303:
         response = self.request(_SOH, 'R1', _STX, parameter, _ETX, bcc=True)
         response = response[6:-2]
         response = response.split('\r\n')
-        response = iter(map(lambda x: self.to_metter_prefix(float(x.strip('()\r\n'))), response))
+        response = iter(
+            map(lambda x: self.to_metter_prefix(float(x.strip('()\r\n')), trunc_value=trunc_value), response))
 
         if payload == 'NDPE':
             return {
@@ -313,7 +315,7 @@ class Energomera303:
             logger.info(config)
         converters = config['converters']
         response_template = config.get('response_template', None)
-
+        trunc_value = config.get('trunc', True)
         global_params = {
             'password': config.get('password', None),
             'payload': config.get('payload', None)
@@ -383,7 +385,7 @@ class Energomera303:
                             with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
                                                session=session) as em:
                                 em_result['address'] = em.address
-                                em_result |= em.read_energy(*payload)
+                                em_result |= em.read_energy(*payload, trunc_value=trunc_value)
                             group['meters'].remove(meter)
                             done = True
                         except Exception as e:
