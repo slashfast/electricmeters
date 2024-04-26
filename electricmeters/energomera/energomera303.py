@@ -46,7 +46,7 @@ _VERBOSE_DEBUG = False
 
 class Energomera303:
     def __init__(self, host: str, port: int, address: str, password: str = None,
-                 metric_prefix: int = 1,
+                 metric_prefix: int = 1000,
                  debug: bool = False, session=False):
         self._debug = debug
         self._is_socket_open = False
