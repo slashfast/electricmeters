@@ -207,7 +207,7 @@ class Mercury236:
         global_params = {
             'access_level': config.get('access_level', None),
             'password': config.get('password', None),
-            'payload': config.get('payload', None),
+            'payload_list': config.get('payload_list', None),
             'bytes_order': config.get('bytes_order', None)
         }
 
@@ -251,24 +251,22 @@ class Mercury236:
                             address = meter
                             access_level = global_params['access_level']
                             password = global_params['password']
-                            payload = global_params['payload']
+                            payload_list = global_params['payload_list']
                             bytes_order = global_params['bytes_order']
                         else:
                             serial_number = meter.get('serial_number', None)
                             address = meter['address']
                             access_level = meter.get('access_level', global_params['access_level'])
                             password = meter.get('password', global_params['password'])
-                            payload = meter.get('payload', global_params['payload'])
+                            payload_list = meter.get('payload_list', global_params['payload_list'])
                             bytes_order = meter.get('order', global_params['bytes_order'])
 
                         if access_level is None:
                             raise ValueError('access_level is missing')
                         if password is None:
                             raise ValueError('password is missing')
-                        if payload is None:
+                        if payload_list is None:
                             raise ValueError('payload is missing')
-
-                        hex_payload = hex(int.from_bytes(payload))
 
                         em_result = {}
 
@@ -283,10 +281,13 @@ class Mercury236:
                         try:
                             with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
                                 em_result['address'] = em.address
-                                if response_template == 'read_energy' and len(payload) == 4:
-                                    em_result[f'tariff{payload[3]}'] = em.read_energy(*payload)
-                                elif response_template is None:
-                                    em_result[f'response_{hex_payload}'] = em.read_unsafe(*payload, order=bytes_order)
+                                for payload in payload_list:
+                                    if response_template == 'read_energy' and len(payload) == 4:
+                                        em_result[f'payload_{'_'.join(payload)}'] = em.read_energy(*payload)
+                                    elif response_template is None:
+                                        hex_payload = hex(int.from_bytes(payload))
+                                        em_result[f'payload_{hex_payload}'] = em.read_unsafe(*payload,
+                                                                                             order=bytes_order)
                             group['meters'].remove(meter)
                             done = True
                         except Exception as e:
