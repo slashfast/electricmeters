@@ -59,7 +59,7 @@ class Energomera303:
         if len(address) < 9:
             raise ValueError('Address length must be 9')
 
-        self._metric_prefix = 1
+        self._metric_prefix = 1000
         if metric_prefix == 10 ** log10(metric_prefix):
             if metric_prefix >= 1000:
                 self._metric_prefix = 1000 / metric_prefix
