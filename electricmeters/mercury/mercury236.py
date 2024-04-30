@@ -283,7 +283,7 @@ class Mercury236:
                                 em_result['address'] = em.address
                                 for payload in payload_list:
                                     if response_template == 'read_energy' and len(payload) == 4:
-                                        em_result[f'payload_{'_'.join(payload)}'] = em.read_energy(*payload)
+                                        em_result[f'payload_{'_'.join(map(str, payload))}'] = em.read_energy(*payload)
                                     elif response_template is None:
                                         hex_payload = hex(int.from_bytes(payload))
                                         em_result[f'payload_{hex_payload}'] = em.read_unsafe(*payload,
