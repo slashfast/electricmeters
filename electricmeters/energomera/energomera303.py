@@ -318,7 +318,7 @@ class Energomera303:
         trunc_value = config.get('trunc', True)
         global_params = {
             'password': config.get('password', None),
-            'payload': config.get('payload', None)
+            'payload_list': config.get('payload_list', None),
         }
 
         session = config.get('session', True)
@@ -361,16 +361,16 @@ class Energomera303:
                         if isinstance(meter, int):
                             address = meter
                             password = global_params['password']
-                            payload = global_params['payload']
+                            payload_list = global_params['payload_list']
                         else:
                             address = meter['address']
                             password = meter.get('password', global_params['password'])
-                            payload = meter.get('payload', global_params['payload'])
+                            payload_list = meter.get('payload_list', global_params['payload_list'])
 
                         if password is None:
                             raise ValueError('password is missing')
-                        if payload is None:
-                            raise ValueError('payload is missing')
+                        if payload_list is None:
+                            raise ValueError('payload_list is missing')
                         if response_template not in ['read_energy']:
                             raise ValueError(f'unknown template: {response_template}')
 
@@ -384,8 +384,9 @@ class Energomera303:
                         try:
                             with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
                                                session=session) as em:
-                                em_result['address'] = em.address
-                                em_result |= em.read_energy(*payload, trunc_value=trunc_value)
+                                for payload in payload_list:
+                                    em_result['address'] = em.address
+                                    em_result[f'payload_{payload}'] = em.read_energy(*payload, trunc_value=trunc_value)
                             group['meters'].remove(meter)
                             done = True
                         except Exception as e:
