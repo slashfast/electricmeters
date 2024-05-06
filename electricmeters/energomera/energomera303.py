@@ -47,7 +47,7 @@ _VERBOSE_DEBUG = False
 class Energomera303:
     def __init__(self, host: str, port: int, address: str, password: str = None,
                  metric_prefix: int = 1000,
-                 debug: bool = False, session=False):
+                 debug: bool = False, session=False, timeout: int = 35):
         self._debug = debug
         self._is_socket_open = False
         self._session = session
@@ -74,7 +74,7 @@ class Energomera303:
         self._host = host
         self._port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket_timeout = 35
+        self._socket_timeout = timeout
         self._socket.settimeout(self._socket_timeout)
 
     @property
@@ -327,6 +327,7 @@ class Energomera303:
 
         timestamp = config.get('timestamp', False)
         delay = config.get('delay', 0)
+        timeout = config.get('timeout', 35)
         pretty = config.get('pretty', False)
 
         if response_template == '':
@@ -383,7 +384,8 @@ class Energomera303:
 
                         try:
                             with Energomera303(ip, port, address, password, metric_prefix, debug=debug,
-                                               session=session) as em:
+                                               session=session,
+                                               timeout=timeout) as em:
                                 for payload in payload_list:
                                     em_result['address'] = em.address
                                     em_result[f'payload_{payload}'] = em.read_energy(*payload, trunc_value=trunc_value)
