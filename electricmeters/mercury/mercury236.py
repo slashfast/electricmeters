@@ -57,7 +57,7 @@ class Mercury236:
             self._address = address % 100
 
         self._access_level = access_level
-        self._password = [int(c) for c in password]
+        self._password = [ord(c) for c in password]
         if len(password) != 6:
             raise ValueError('Password length must be equal to 6')
 
