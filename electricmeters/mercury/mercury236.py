@@ -34,20 +34,24 @@ from math import log10
 from electricmeters.crc16 import crc16
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(levelname)s | %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
 
 
 class Mercury236:
-    def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111',
+    def __init__(self, host: str, port: int, address: int, access_level: int = 1, password: str = '111111',
                  metric_prefix: int = 1,
                  debug: bool = False, timeout: int = 5):
         self._debug = debug
+
+        if self._debug:
+            logger.setLevel(logging.DEBUG)
+
         self._is_socket_open = False
 
         self._metric_prefix = 1
         if metric_prefix == 10 ** log10(metric_prefix):
             self._metric_prefix = metric_prefix
-        elif self._debug:
+        else:
             logger.debug(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
 
         self._address = address % 1000
@@ -57,11 +61,11 @@ class Mercury236:
             self._address = address % 100
 
         self._access_level = access_level
-        self._password = [ord(c) for c in password]
+        self._password = password.encode()
         if len(password) != 6:
             raise ValueError('Password length must be equal to 6')
 
-        self._ip = ip
+        self._host = host
         self._port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket_timeout = timeout
@@ -72,7 +76,7 @@ class Mercury236:
         return self._address
 
     def open(self):
-        self._socket.connect((self._ip, self._port))
+        self._socket.connect((self._host, self._port))
         self.request(0x01, self._access_level, *self._password)
         self._is_socket_open = True
 
@@ -83,14 +87,13 @@ class Mercury236:
 
     def request(self, *args):
         caller_name = inspect.stack()[1][3]
-        if self._debug:
-            logger.debug(f'Request caller: {caller_name}')
-        self._socket.sendall(self._pack_message(self._address, *args, debug=self._debug))
+        logger.debug(f'Request caller: {caller_name}')
+        self._socket.sendall(self._pack_message(self._address, *args))
 
         response = self._read_socket()
 
         if len(response) > 1:
-            address, data = self._unpack_message(response, debug=self._debug)
+            address, data = self._unpack_message(response)
             if address == self._address:
                 return data
 
@@ -162,25 +165,23 @@ class Mercury236:
         return self
 
     @staticmethod
-    def _pack_message(*args, crc=True, debug=False):
+    def _pack_message(*args, crc=True):
         caller_name = inspect.stack()[1][3]
         message = bytes(args)
-        if debug:
-            logger.debug(f'Before pack ({caller_name}): {hex(int.from_bytes(message))}')
+        logger.debug(f'Before pack ({caller_name}): {Mercury236.pretty_hex(message)}')
         result = message + crc16(message) if crc else message
-        if debug:
-            logger.debug(f'After pack ({caller_name}): {hex(int.from_bytes(result))}')
+        logger.debug(f'After pack ({caller_name}): {Mercury236.pretty_hex(result)}')
         return result
 
     @staticmethod
-    def _unpack_message(message: bytes, debug: bool = False):
+    def _unpack_message(message: bytes):
         caller_name = inspect.stack()[1][3]
-        if debug:
-            logger.debug(f'Before unpack ({caller_name}): {hex(int.from_bytes(message))}')
+        logger.debug(f'Before unpack ({caller_name}): {Mercury236.pretty_hex(message)}')
         address = int.from_bytes(message[:1], 'big')
         data = list(message[1:])
-        if debug:
-            logger.debug(f'After unpack ({caller_name}): {hex(address), hex(int.from_bytes(data))}')
+        logger.debug(
+            f'After unpack ({caller_name}): {Mercury236.pretty_hex(message[:1]), Mercury236.pretty_hex(message[1:])}'
+        )
         return address, data
 
     @staticmethod
@@ -359,6 +360,10 @@ class Mercury236:
                     output.write(result)
             else:
                 print(result)
+
+    @staticmethod
+    def pretty_hex(data: bytes):
+        return ' '.join(f'{ch:02X}' for ch in data)
 
     @staticmethod
     def log_error(address, ip, port, e):
