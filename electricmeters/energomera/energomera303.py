@@ -355,7 +355,7 @@ class Energomera303:
                 "tariff4": {"active+": next(response)},
                 "tariff5": {"active+": next(response)},
             }
-        return response
+        return [*response]
 
     @staticmethod
     def parity_check(target: int, reverse=False):
