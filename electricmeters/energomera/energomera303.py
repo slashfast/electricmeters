@@ -30,7 +30,7 @@ from datetime import datetime, date, timedelta
 from math import log10, trunc
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(levelname)s | %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
 
 _SOH = b'\x01'
 _STX = b'\x02'
@@ -41,7 +41,7 @@ _EOL = b'\x0D\x0a'  # \r\n
 _INIT = b'\x2f\x3f'  # / ?
 _CMD_SOHR = b'\x01\x52\x31\x02'  # SOH R 1 STX
 
-_VERBOSE_DEBUG = False
+_VERBOSE_DEBUG = True
 
 
 class Energomera303:
@@ -49,6 +49,10 @@ class Energomera303:
                  metric_prefix: int = 1000,
                  debug: bool = False, session=False, timeout: int = 35):
         self._debug = debug
+
+        if self._debug:
+            logger.setLevel(logging.DEBUG)
+
         self._is_socket_open = False
         self._session = session
         self._is_session = False
@@ -64,7 +68,7 @@ class Energomera303:
                 self._metric_prefix = 1000 / metric_prefix
             else:
                 self._metric_prefix = metric_prefix * 1000
-        elif self._debug:
+        else:
             logger.debug(f'Incorrect metric prefix "{metric_prefix}" will be ignored')
             self._metric_prefix = 1000
 
@@ -84,21 +88,21 @@ class Energomera303:
     def open(self):
         self._socket.connect((self._host, self._port))
         self._is_socket_open = True
+
         if self._session:
             self.start_session()
 
     def start_session(self):
         if not self._is_session:
             response = self.request(_INIT, self._address, _POST_INIT, _EOL)
-            if self._debug:
-                logger.debug(f'Init response: {response}')
+            logger.debug(f'Init response: {response}')
             response = self.request(_ACK, '051', _EOL)
-            if self._debug:
-                logger.debug(f'Acknowledge response: {response}')
+            logger.debug(f'Acknowledge response: {response}')
+
             if self._password is not None:
                 response = self.request(_SOH, 'P1', _STX, f'({self._password})', _ETX, bcc=True)
-                if self._debug:
-                    logger.debug(f'Password response: {response}')
+                logger.debug(f'Password response: {response}')
+
             self._is_session = True
         else:
             raise Exception('Session already started')
@@ -113,6 +117,7 @@ class Energomera303:
     def close(self):
         if self._session:
             self.stop_session()
+
         self._socket.close()
 
     def _read_socket(self):
@@ -123,7 +128,7 @@ class Energomera303:
                 self._socket.settimeout(self._socket_timeout)
                 data = self._socket.recv(72)
 
-                if self._debug and _VERBOSE_DEBUG:
+                if _VERBOSE_DEBUG:
                     unpacked_data = self._unpack_message(data)
                     logger.debug(
                         f'Recv: {self.pretty_hex(unpacked_data)}\t{unpacked_data.decode('ascii').replace('\r\n',
@@ -141,27 +146,26 @@ class Energomera303:
                     first_byte = self._unpack_message(buffer[0].to_bytes())
 
                     if first_byte == _ACK:
-                        if self._debug:
-                            logger.debug("ACK found")
+                        logger.debug("ACK found")
                         break
 
                     elif is_stx := first_byte == _STX or first_byte == _SOH:
-                        if self._debug and _VERBOSE_DEBUG:
+                        if _VERBOSE_DEBUG:
                             logger.debug("First is STX" if is_stx else "First is SOH")
+
                         if self._unpack_message(buffer[-2].to_bytes()) == _ETX:
-                            if self._debug:
-                                logger.debug("ETX found")
+                            logger.debug("ETX found")
                             break
 
                     elif first_byte == b'\x2f':
-                        if self._debug and _VERBOSE_DEBUG:
+                        if _VERBOSE_DEBUG:
                             logger.debug("First is /")
+
                         if self._unpack_message(buffer[-2:]) == _EOL:
-                            if self._debug:
-                                logger.debug("EOL found")
+                            logger.debug("EOL found")
                             break
                     else:
-                        if self._debug and _VERBOSE_DEBUG:
+                        if _VERBOSE_DEBUG:
                             logger.debug(f"First byte: {first_byte}")
 
                 except IndexError:
@@ -176,9 +180,11 @@ class Energomera303:
     @staticmethod
     def bcc(data: bytes):
         bcc = Energomera303.parity_check((sum(data) & 0x7F)).to_bytes()
+
         if _VERBOSE_DEBUG:
             logger.debug(f"BCC input: {repr(data)}")
             logger.debug(f'BCC: {repr(bcc)}')
+
         return bcc
 
     def _pack_message(self, *args, parity_check=True, bcc=True):
@@ -191,43 +197,49 @@ class Energomera303:
                 arg = bytes(map(ord, arg))
 
             packed += arg
-        if self._debug and _VERBOSE_DEBUG:
+
+        if _VERBOSE_DEBUG:
             logger.debug(f'Before pack ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
 
         if parity_check:
-            if self._debug and _VERBOSE_DEBUG:
-                logger.debug(
-                    f'Before parity check ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+            if _VERBOSE_DEBUG:
+                logger.debug(f'Before parity check ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+
             packed = bytes(map(self.parity_check, packed))
-            if self._debug and _VERBOSE_DEBUG:
+
+            if _VERBOSE_DEBUG:
                 logger.debug(f'After parity check ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
 
         if bcc:
-            if self._debug and _VERBOSE_DEBUG:
+            if _VERBOSE_DEBUG:
                 logger.debug(f'Before BCC ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+
             packed += self.bcc(packed[1:])
-            if self._debug and _VERBOSE_DEBUG:
+
+            if _VERBOSE_DEBUG:
                 logger.debug(f'After BCC ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
 
-        if self._debug:
-            logger.debug(f'After pack ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
+        logger.debug(f'After pack ({caller_name}): {self.pretty_hex(packed)}\t{packed}')
         return packed
 
     def _unpack_message(self, data: bytes):
         caller_name = inspect.stack()[1][3]
-        if self._debug and _VERBOSE_DEBUG:
+
+        if _VERBOSE_DEBUG:
             logger.debug(f'Before unpack ({caller_name}): {self.pretty_hex(data)}\t{data}')
 
         data = bytes(map(lambda x: self.parity_check(x, True), data))
 
-        if self._debug and _VERBOSE_DEBUG:
+        if _VERBOSE_DEBUG:
             logger.debug(f'After unpack ({caller_name}): {self.pretty_hex(data)}\t{data}')
+
         return data
 
     def request(self, *args, parity_check=True, bcc=False, decode=True, read=True, raw=None):
         caller_name = inspect.stack()[1][3]
-        if self._debug:
-            logger.debug(f'Request caller: {caller_name}')
+
+        logger.debug(f'Request caller: {caller_name}')
+
         if isinstance(raw, bytes):
             self._socket.sendall(raw)
         else:
@@ -237,25 +249,23 @@ class Energomera303:
 
         if read:
             response = self._read_socket()
-            if self._debug and _VERBOSE_DEBUG:
+            if _VERBOSE_DEBUG:
                 logger.debug(f'Raw response {repr(response)}')
+
             if len(response) > 0:
                 response = self._unpack_message(response)
                 hex_response = self.pretty_hex(response)
                 if decode:
                     try:
                         response = response.decode('ascii')
-                        if self._debug:
-                            logger.debug(
-                                f'Response: {hex_response}\t{response.replace('\r\n', '<CR><LF>')}')
+                        logger.debug(f'Response: {hex_response}\t{response.replace('\r\n', '<CR><LF>')}')
                     except UnicodeDecodeError:
-                        if self._debug:
-                            logger.debug(f'Skip decode {response}')
+                        logger.debug(f'Skip decode {response}')
                 return response[:-1] if bcc else response
 
             # raise ValueError(f"Error while read data from socket")
 
-    def to_metter_prefix(self, value: float, trunc_value=True) -> int | float:
+    def to_meter_prefix(self, value: float, trunc_value=True) -> int | float:
         result = value * self._metric_prefix
         return trunc(result) if trunc_value else result
 
@@ -266,13 +276,12 @@ class Energomera303:
             value = (date.today() - timedelta(days=1)).strftime(f'%{self._wtz}d.%{self._wtz}m.%y')
 
         parameter = f'E{payload}({value})'
-        if self._debug:
-            logger.debug(f'Prepared parameter: {parameter}')
+        logger.debug(f'Prepared parameter: {parameter}')
         response = self.request(_SOH, 'R1', _STX, parameter, _ETX, bcc=True)
         response = response[6:-2]
         response = response.split('\r\n')
         response = iter(
-            map(lambda x: self.to_metter_prefix(float(x.strip('()\r\n')), trunc_value=trunc_value), response))
+            map(lambda x: self.to_meter_prefix(float(x.strip('()\r\n')), trunc_value=trunc_value), response))
 
         if payload == 'NDPE':
             return {
