@@ -40,7 +40,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(levelname)s | %
 class Mercury236:
     def __init__(self, ip: str, port: int, address: int, access_level: int = 1, password: str = '111111',
                  metric_prefix: int = 1,
-                 debug: bool = False):
+                 debug: bool = False, timeout: int = 5):
         self._debug = debug
         self._is_socket_open = False
 
@@ -64,7 +64,7 @@ class Mercury236:
         self._ip = ip
         self._port = port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket_timeout = 5
+        self._socket_timeout = timeout
         self._socket.settimeout(self._socket_timeout)
 
     @property
@@ -215,6 +215,7 @@ class Mercury236:
 
         timestamp = config.get('timestamp', False)
         delay = config.get('delay', 0)
+        timeout = config.get('timeout', 5)
         pretty = config.get('pretty', False)
 
         if response_template == '':
@@ -279,7 +280,8 @@ class Mercury236:
                             time.sleep(delay)
 
                         try:
-                            with Mercury236(ip, port, address, access_level, password, metric_prefix, debug) as em:
+                            with Mercury236(ip, port, address, access_level, password, metric_prefix, debug,
+                                            timeout=timeout) as em:
                                 em_result['address'] = em.address
                                 for payload in payload_list:
                                     if response_template == 'read_energy' and len(payload) == 4:
