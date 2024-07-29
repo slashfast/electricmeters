@@ -327,12 +327,12 @@ class Energomera303:
     def read_energy(self, *selectors: str, value="", trunc_value=True):
         payload = "".join(selectors)
 
-        if payload == "NDPE":
+        if payload[0] == "E":
             value = (date.today() - timedelta(days=1)).strftime(
                 f"%{self._wtz}d.%{self._wtz}m.%y"
             )
 
-        parameter = f"E{payload}({value})"
+        parameter = f"{payload}({value})"
         logger.debug(f"Prepared parameter: {parameter}")
         response = self.request(_SOH, "R1", _STX, parameter, _ETX, bcc=True)
         response = response[6:-2]
@@ -345,17 +345,18 @@ class Energomera303:
                 response,
             )
         )
-
-        if payload == "NDPE":
-            return {
-                "tariff0": {"active+": next(response)},
-                "tariff1": {"active+": next(response)},
-                "tariff2": {"active+": next(response)},
-                "tariff3": {"active+": next(response)},
-                "tariff4": {"active+": next(response)},
-                "tariff5": {"active+": next(response)},
-            }
-        return [*response]
+        return {
+            f"tariff{index}": {"active+": value}
+            for index, value in enumerate(response)
+        }
+        # return {
+        #     "tariff0": {"active+": next(response)},
+        #     "tariff1": {"active+": next(response)},
+        #     "tariff2": {"active+": next(response)},
+        #     "tariff3": {"active+": next(response)},
+        #     "tariff4": {"active+": next(response)},
+        #     "tariff5": {"active+": next(response)},
+        # }
 
     @staticmethod
     def parity_check(target: int, reverse=False):
