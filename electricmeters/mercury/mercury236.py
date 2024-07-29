@@ -266,7 +266,7 @@ class Mercury236:
                         if password is None:
                             raise ValueError('password is missing')
                         if payload_list is None:
-                            raise ValueError('payload is missing')
+                            raise ValueError('payload_list is missing')
 
                         em_result = {}
 
