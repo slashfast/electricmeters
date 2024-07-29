@@ -25,15 +25,15 @@ from importlib import import_module
 
 
 def compose(args: Namespace):
-    with open(args.config, 'rb') as config:
+    with open(args.config, "rb") as config:
         config = tomllib.load(config)
 
     brand = config["brand"]
-    model = config['model']
-    class_name = f'{brand}{model}'.capitalize()
+    model = config["model"]
+    class_name = f"{brand}{model}".capitalize()
 
     try:
-        em_module = import_module(f'electricmeters.{brand}')
+        em_module = import_module(f"electricmeters.{brand}")
     except ModuleNotFoundError:
         raise NotImplementedError(f'electric meter "{brand}"')
 
