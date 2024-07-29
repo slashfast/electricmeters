@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "electricmeters"
-version = "0.7.2-b"
+version = "0.8.0-b"
 description = ""
 authors = ["Vladislav Trofimenko <foss@slashfast.dev>"]
 
