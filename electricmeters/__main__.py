@@ -20,6 +20,8 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import argparse
+import tomllib
+from importlib import import_module
 from pathlib import Path
 
 from electricmeters import compose
@@ -50,4 +52,23 @@ if __name__ == "__main__":
     if args.subparser is None:
         arg_parser.print_help()
     elif args.subparser == "compose":
-        compose(args)
+        config = tomllib.load(Path(args.config).open("rb"))
+        brand = config["brand"]
+        model = config["model"]
+        class_name = f"{brand}{model}".capitalize()
+
+        try:
+            em_module = import_module(f"electricmeters.{brand}")
+        except ModuleNotFoundError:
+            raise NotImplementedError(f'electric meter "{brand}"')
+
+        try:
+            em = getattr(em_module, class_name)
+        except AttributeError:
+            try:
+                class_name = model
+                em = getattr(em_module, class_name)
+            except AttributeError:
+                raise NotImplementedError(f'model "{class_name}"')
+
+        em.compose(config)
