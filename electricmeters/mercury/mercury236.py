@@ -390,59 +390,6 @@ class Mercury236:
                 output.write(json_output)
 
     @staticmethod
-    def cli(args: Namespace):
-        result = []
-        for address, ip, port in zip(args.address, args.ip, args.port):
-            try:
-                with Mercury236(
-                    ip, port, address, args.access_level, args.password
-                ) as em:
-                    if (
-                        args.response_template == "read_energy"
-                        and len(args.payload) == 4
-                    ):
-                        result.append(
-                            {
-                                "energy_meter": {
-                                    "address": address,
-                                    "ip": ip,
-                                    "port": port,
-                                    "access_level": args.access_level,
-                                    "password": args.password,
-                                },
-                                f"tariff{args.payload[3]}": em.read_energy(
-                                    *args.payload
-                                ),
-                            }
-                        )
-                    elif args.response_template is None:
-                        result.append(
-                            {
-                                "energy_meter": {
-                                    "address": address,
-                                    "ip": ip,
-                                    "port": port,
-                                    "access_level": args.access_level,
-                                    "password": args.password,
-                                },
-                                "response": em.read_unsafe(*args.payload),
-                            }
-                        )
-
-            except Exception as e:
-                Mercury236.log_error(address, ip, port, e)
-
-        if len(result) > 0:
-            if args.output_format == "json":
-                result = json.dumps(result)
-
-            if args.output is not None:
-                with open(args.output, "w", encoding="utf8") as output:
-                    output.write(result)
-            else:
-                print(result)
-
-    @staticmethod
     def pretty_hex(data: bytes):
         return " ".join(f"{ch:02X}" for ch in data)
 
