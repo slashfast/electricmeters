@@ -29,10 +29,6 @@ import traceback
 from datetime import datetime, date, timedelta
 from math import log10, trunc
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
-)
 
 _SOH = b"\x01"
 _STX = b"\x02"

@@ -20,11 +20,16 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import argparse
+import logging
 import tomllib
 from importlib import import_module
 from pathlib import Path
 
-from electricmeters import compose
+import electricmeters
+from electricmeters.config import ConverterConfig, GroupConfig
+
+LOG_FMT = "%(asctime)s %(address)s %(levelname)s %(message)s"
+logger = logging.getLogger("electricmeters")
 
 
 def get_parser():
@@ -32,43 +37,83 @@ def get_parser():
         prog="electricmeters",
         description="Electric energy meter data receiver",
     )
-    subparsers = parser.add_subparsers(
-        help="sub-commands help", dest="subparser"
-    )
-    compose_parser = subparsers.add_parser(
-        "compose", help="Compose request from config"
-    )
-    compose_parser.add_argument(
-        "config", type=Path, nargs="?", default="em-compose.toml"
+
+    (
+        parser.add_subparsers(help="sub-commands help", dest="subparser")
+        .add_parser("compose", help="Compose request from config")
+        .add_argument(
+            "config", type=Path, nargs="?", default="em-compose.toml"
+        )
     )
 
     return parser
 
 
+def compose(path: Path):
+    config_dict = tomllib.load(path.open("rb"))
+    brand = config_dict["brand"]
+    model = config_dict["model"]
+    class_name = f"{brand}{model}".capitalize()
+
+    if config_dict.get("debug", False):
+        logger.setLevel("DEBUG")
+
+    try:
+        em_module = import_module(f"electricmeters.{brand}")
+    except ModuleNotFoundError:
+        raise NotImplementedError(f'electric meter "{brand}"')
+
+    try:
+        em = getattr(em_module, class_name)
+    except AttributeError:
+        try:
+            class_name = model
+            em = getattr(em_module, class_name)
+        except AttributeError:
+            raise NotImplementedError(f'model "{class_name}"')
+
+    config = electricmeters.config.Config
+    meter_config = electricmeters.config.MeterConfig
+
+    try:
+        meter_config_module = getattr(em_module, "config")
+        config = meter_config_module.Config
+        meter_config = meter_config_module.MeterConfig
+    except AttributeError:
+        # fallback to base config
+        pass
+
+    config_dict["converters"] = [
+        ConverterConfig(
+            ip=converter["ip"],
+            port=converter["port"],
+            groups=[
+                GroupConfig(
+                    name=group["name"],
+                    meters=[
+                        meter_config(**meter_config.force_dict(meter))
+                        for meter in group["meters"]
+                    ],
+                )
+                for group in converter.get(
+                    "groups", [{"name": None, "meters": converter["meters"]}]
+                )
+            ],
+        )
+        for converter in config_dict["converters"]
+    ]
+    em.compose(config(**config_dict))
+
+
 if __name__ == "__main__":
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(LOG_FMT))
+    logger.addHandler(handler)
+
     arg_parser = get_parser()
     args = arg_parser.parse_args()
 
-    if args.subparser is None:
+    if args.subparser == "compose":
+        compose(args.config)
+    else:
         arg_parser.print_help()
-    elif args.subparser == "compose":
-        config = tomllib.load(Path(args.config).open("rb"))
-        brand = config["brand"]
-        model = config["model"]
-        class_name = f"{brand}{model}".capitalize()
-
-        try:
-            em_module = import_module(f"electricmeters.{brand}")
-        except ModuleNotFoundError:
-            raise NotImplementedError(f'electric meter "{brand}"')
-
-        try:
-            em = getattr(em_module, class_name)
-        except AttributeError:
-            try:
-                class_name = model
-                em = getattr(em_module, class_name)
-            except AttributeError:
-                raise NotImplementedError(f'model "{class_name}"')
-
-        em.compose(config)

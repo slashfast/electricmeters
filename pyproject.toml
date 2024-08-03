@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "electricmeters"
-version = "0.11.1-rc3"
+version = "0.12.0-dev"
 description = ""
 authors = ["Vladislav Trofimenko <foss@slashfast.dev>"]
 license = 'MIT'
 
 [tool.poetry.dependencies]
 python = ">=3.12"
+args = "^0.1.0"
 
 
 [build-system]
