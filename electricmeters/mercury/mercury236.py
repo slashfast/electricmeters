@@ -288,13 +288,13 @@ class Mercury236(AbstractMeter):
                                 hex_payload = hex(int.from_bytes(payload))
                                 payload_key = f"payload_{hex_payload}"
                                 if (
-                                    meter.response_template == "read_energy"
+                                    config.response_template == "read_energy"
                                     and len(payload) == 4
                                 ):
                                     em_result[payload_key] = em.read_energy(
                                         *payload
                                     )
-                                elif meter.response_template is None:
+                                elif config.response_template is None:
                                     em_result[payload_key] = em.read_unsafe(
                                         *payload
                                     )
