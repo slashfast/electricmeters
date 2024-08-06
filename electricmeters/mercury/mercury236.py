@@ -90,7 +90,7 @@ class Mercury236(AbstractMeter):
 
     def request(self, *args):
         self._socket.sendall(self._pack_message(self.address, *args))
-        self.log(DEBUG, f"{args} sent to {self.address}")
+        self.log(DEBUG, f"{args} sent")
         response = self._read_socket()
 
         if len(response) > 1:
