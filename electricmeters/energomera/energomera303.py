@@ -278,7 +278,7 @@ class Energomera303(AbstractMeter):
                         self.log(DEBUG, f"Skip decode {response}")
                 return response[:-1] if bcc else response
 
-            # raise ValueError(f"Error while read data from socket")
+            raise ValueError("Error while read data from socket")
 
     def to_meter_prefix(self, value: float, trunc_value=True) -> int | float:
         result = value * self._metric_prefix
