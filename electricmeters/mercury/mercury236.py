@@ -53,6 +53,8 @@ class Mercury236(AbstractMeter):
         metric_prefix: int = 1,
         debug: bool = False,
     ):
+        self.access_level = access_level
+
         if (address_length := len(f"{address}")) == 8:
             address = address % 1000
             if address == 0:
