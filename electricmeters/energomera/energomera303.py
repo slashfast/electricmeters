@@ -65,7 +65,7 @@ class Energomera303(AbstractMeter):
         debug: bool = False,
         session=True,
         timeout: int = 35,
-        request_delay: float = 2.5,
+        request_delay: float = 0.5,
     ):
         self.request_delay = request_delay
         self._session = session
