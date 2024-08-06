@@ -5,7 +5,7 @@ from electricmeters.config import Config, MeterConfig
 
 @dataclass(frozen=True, slots=True)
 class MeterConfig(MeterConfig):
-    address: int
+    serial_number: int = None
 
 
 @dataclass(frozen=True, slots=True)

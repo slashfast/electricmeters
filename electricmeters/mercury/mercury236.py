@@ -18,7 +18,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+import random
 import time
 import traceback
 from functools import reduce
@@ -248,7 +248,9 @@ class Mercury236(AbstractMeter):
                         meter: MeterConfig = group.meters[index]
                         password = meter.password or config.password
                         address = meter.address or meter.serial_number
-                        em_result = {"meter": address}
+                        em_result = {
+                            "serial_number": meter.serial_number,
+                        }
                         time.sleep(config.delay)
                         em = None
                         try:
@@ -262,6 +264,7 @@ class Mercury236(AbstractMeter):
                                 metric_prefix=config.metric_prefix,
                                 timeout=config.timeout,
                             )
+                            em_result["address"] = em.address
                             em.log(INFO, "Initialized")
                             # emulate
                             # if random.random() < 0.5:
@@ -284,7 +287,6 @@ class Mercury236(AbstractMeter):
                             #         else:
                             #             raise ValueError("Invalid payload")
                             em.open()
-                            em_result["address"] = em.address
 
                             for payload in config.payload_list:
                                 hex_payload = hex(int.from_bytes(payload))

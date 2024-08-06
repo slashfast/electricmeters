@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MeterConfig:
-    serial_number: int
+    address: int
     password: str = None
 
     @staticmethod
@@ -38,7 +38,7 @@ class MeterConfig:
         if isinstance(value, dict):
             return value
         elif isinstance(value, int):
-            return {"serial_number": value}
+            return {"address": value}
 
         raise TypeError("Supported only integers and dicts")
 

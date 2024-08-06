@@ -346,8 +346,8 @@ class Energomera303(AbstractMeter):
                     for _ in range(len(group.meters)):
                         meter: MeterConfig = group.meters[index]
                         password = meter.password or config.password
-                        address = meter.serial_number
-                        em_result = {"meter": address}
+                        address = meter.address
+                        em_result = {"address": address}
                         time.sleep(config.delay)
                         em = None
                         try:
@@ -377,7 +377,6 @@ class Energomera303(AbstractMeter):
                             #         payload_key = f"payload_{hex_payload}"
                             #         em_result[payload_key] = 1
                             em.open()
-                            em_result["address"] = em.address
 
                             for payload in config.payload_list:
                                 payload_str = hex(int.from_bytes(payload))
