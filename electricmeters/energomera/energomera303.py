@@ -121,6 +121,7 @@ class Energomera303(AbstractMeter):
                 self.log(DEBUG, f"Password response: {response}")
 
             self._is_session = True
+            self.log(DEBUG, "Session started")
         else:
             raise Exception("Session already started")
 
@@ -128,8 +129,7 @@ class Energomera303(AbstractMeter):
         if self._is_session:
             self.request(_SOH, "B0", _ETX, bcc=True, decode=False, read=False)
             self._is_session = False
-        else:
-            raise Exception("Session is not started")
+            self.log(DEBUG, "Session closed")
 
     def close(self):
         if self._session:
