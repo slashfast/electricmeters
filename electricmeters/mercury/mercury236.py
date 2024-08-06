@@ -244,7 +244,7 @@ class Mercury236(AbstractMeter):
                 for retry in range(1, config.max_retries + 1):
                     logger.info(f"Попытка {retry}", extra={"address": ""})
                     index = 0
-                    for _ in group.meters:
+                    for _ in range(len(group.meters)):
                         meter: MeterConfig = group.meters[index]
                         password = meter.password or config.password
                         address = meter.address or meter.serial_number

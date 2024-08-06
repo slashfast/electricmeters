@@ -343,7 +343,7 @@ class Energomera303(AbstractMeter):
                 for retry in range(1, config.max_retries + 1):
                     logger.info(f"Попытка {retry}", extra={"address": ""})
                     index = 0
-                    for _ in group.meters:
+                    for _ in range(len(group.meters)):
                         meter: MeterConfig = group.meters[index]
                         password = meter.password or config.password
                         address = meter.serial_number
@@ -364,25 +364,18 @@ class Energomera303(AbstractMeter):
                             )
                             em.log(INFO, "Initialized")
                             # emulate
-                            # if random.random() < 0.5:
+                            # if (
+                            #     random.random() < 0.5
+                            # ):
                             #     raise TimeoutError("timeout")
                             # else:
                             #     em.log(INFO, "Reading started")
                             #     for payload in config.payload_list:
                             #         hex_payload = hex(
-                            #             int.from_bytes(payload)
+                            #         int.from_bytes(payload)
                             #         )
                             #         payload_key = f"payload_{hex_payload}"
-                            #         if (
-                            #             config.response_template
-                            #             == "read_energy"
-                            #             and len(payload) == 4
-                            #         ):
-                            #             em_result[payload_key] = 1
-                            #         elif config.response_template is None:
-                            #             em_result[payload_key] = 1
-                            #         else:
-                            #             raise ValueError("Invalid payload")
+                            #         em_result[payload_key] = 1
                             em.open()
                             em_result["address"] = em.address
 
