@@ -23,8 +23,10 @@ import os
 import time
 import traceback
 from datetime import date, timedelta
+from functools import wraps
 from logging import DEBUG, ERROR, INFO
 from math import log10, trunc
+from typing import Callable
 
 from electricmeters.__main__ import logger
 from electricmeters.config import MeterConfig
@@ -43,6 +45,15 @@ _CMD_SOHR = b"\x01\x52\x31\x02"  # SOH R 1 STX
 WTZ = "#" if os.name == "nt" else "-"
 
 
+def _delay(foo: Callable) -> Callable:
+    @wraps(foo)
+    def wrapper(self, *args, **kwargs):
+        time.sleep(self.request_delay)
+        return foo(self, *args, **kwargs)
+
+    return wrapper
+
+
 class Energomera303(AbstractMeter):
     def __init__(
         self,
@@ -54,7 +65,9 @@ class Energomera303(AbstractMeter):
         debug: bool = False,
         session=True,
         timeout: int = 35,
+        request_delay: float = 2.5,
     ):
+        self.request_delay = request_delay
         self._session = session
         self._is_session = False
 
@@ -227,6 +240,7 @@ class Energomera303(AbstractMeter):
 
         return data
 
+    @_delay
     def request(
         self,
         *args,
@@ -346,6 +360,7 @@ class Energomera303(AbstractMeter):
                                 debug=config.debug,
                                 metric_prefix=config.metric_prefix,
                                 timeout=config.timeout,
+                                request_delay=config.request_delay,
                             )
                             em.log(INFO, "Initialized")
                             # emulate
