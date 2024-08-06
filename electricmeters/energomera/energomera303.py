@@ -285,7 +285,7 @@ class Energomera303(AbstractMeter):
         return trunc(result) if trunc_value else result
 
     def read_energy(self, *payload: int, value="", trunc_value=True):
-        if payload[0] == 68:
+        if payload[0] == 69:
             value = (date.today() - timedelta(days=1)).strftime(
                 f"%{WTZ}d.%{WTZ}m.%y"
             )
