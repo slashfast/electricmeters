@@ -7,7 +7,6 @@ license = 'MIT'
 
 [tool.poetry.dependencies]
 python = ">=3.12"
-args = "^0.1.0"
 
 
 [build-system]
