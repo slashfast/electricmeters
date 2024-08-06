@@ -55,7 +55,9 @@ def compose(path: Path):
     model = config_dict["model"]
     class_name = f"{brand}{model}".capitalize()
 
-    if config_dict.get("debug", False):
+    if config_dict.get("trace", False):
+        logger.setLevel(5)
+    elif config_dict.get("debug", False):
         logger.setLevel("DEBUG")
 
     try:

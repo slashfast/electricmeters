@@ -74,6 +74,7 @@ class Config:
     trunc_values: bool = True
     metric_prefix: int = 1
     debug: bool = False
+    trace: bool = False
 
     def __post_init__(self):
         if not self.password and not all(
