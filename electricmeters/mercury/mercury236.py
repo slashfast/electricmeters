@@ -19,7 +19,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import socket
 import time
 import traceback
 from functools import reduce
@@ -80,10 +79,6 @@ class Mercury236(AbstractMeter):
             metric_prefix=metric_prefix,
             debug=debug,
         )
-
-        self.access_level = access_level
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.settimeout(self.timeout)
 
     def open(self):
         self._socket.connect((self.host, self.port))

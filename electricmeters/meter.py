@@ -20,6 +20,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import json
+import socket
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Callable
@@ -52,7 +53,8 @@ class AbstractMeter(ABC):
         self.metric_prefix = metric_prefix
         self.debug = debug
         self._log_info = {"address": address}
-        self._socket = None
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.settimeout(self.timeout)
 
     @abstractmethod
     def open(self): ...
