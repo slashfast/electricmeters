@@ -305,7 +305,8 @@ class Mercury236(AbstractMeter):
                         except Exception as e:
                             if em:
                                 em.log(DEBUG, f"{e}")
-                            elif config.debug:
+
+                            if config.debug:
                                 traceback.print_exc()
 
                             if retry == config.max_retries:
