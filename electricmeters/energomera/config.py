@@ -5,4 +5,4 @@ from electricmeters.config import Config
 
 @dataclass(frozen=True, slots=True)
 class Config(Config):
-    session: bool = False
+    session: bool = True

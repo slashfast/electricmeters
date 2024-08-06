@@ -52,7 +52,7 @@ class Energomera303(AbstractMeter):
         password: str = None,
         metric_prefix: int = 1000,
         debug: bool = False,
-        session=False,
+        session=True,
         timeout: int = 35,
     ):
         self._session = session
@@ -342,6 +342,7 @@ class Energomera303(AbstractMeter):
                                 password=password,
                                 host=converter.ip,
                                 port=converter.port,
+                                session=config.session,
                                 debug=config.debug,
                                 metric_prefix=config.metric_prefix,
                                 timeout=config.timeout,
