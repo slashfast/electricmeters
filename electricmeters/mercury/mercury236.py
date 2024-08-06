@@ -66,6 +66,11 @@ class Mercury236(AbstractMeter):
         elif 1 > address or address > 240:
             raise ValueError("Address must be >= 1 and <= 240")
 
+        # ascii isn't supported for
+        # 204, 230, 231, 236 and 208, 234, 238
+        # without the letter D in the code
+        password = [int(ch) for ch in password]
+
         super().__init__(
             host,
             port,
